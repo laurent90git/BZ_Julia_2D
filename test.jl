@@ -2,6 +2,7 @@ using DifferentialEquations, BenchmarkTools
 using Plots
 using Logging
 using TerminalLoggers, ProgressBars
+include("cusIO.jl")
 
 function laplacian!(u, lap, ncol, nlin,dx,dy)
 	# Laplacian for constant coefficient diffusion
@@ -101,7 +102,45 @@ function bz_3eq_init_sol!(u,p,ymin,xmin)
         u[irow]=(f*u[irow+2])/(q+u[irow+1])
       end
     end
-  end
+end
+
+function compute_timestep()
+    return 0.0001
+end
+
+function solve_strang(u,tspan, dt ,p, int_diff, int_reac)
+    tspan_fake = (tspan[1], tspan[2]*2) # pour être sûr que l'itnégration se poursuit --> peut-être problématique si la RHS dépend de t...
+    prob_reac = ODEProblem(ODEbz_reac!,u,tspan_fake,p)
+    prob_diff = ODEProblem(ODEbz_diff!,u,tspan_fake,p)
+    
+    solver_reac = init(prob_reac,int_reac, save_on = true, save_everystep = false, save_end = false, calck = true,
+                       abstol = 1e-6, reltol = 1e-6)
+    solver_diff = init(prob_diff,int_diff, save_on = false, save_everystep = false, save_end = false, calck = true,
+                       abstol = 1e-6, reltol = 1e-6)    
+    
+    
+    
+    soltime = [copy(tspan[1])]
+    solhist=[copy(u)]
+    t=tspan[1]
+    dt0 = dt
+    while(t<tspan[2]*0.999999)
+        #dt = compute_timestep()
+
+        dt = min(dt0, tspan[2]-t)
+        println(t, " ",dt)
+        step!(solver_reac,dt*0.5,true)
+        set_u!(solver_diff ,solver_reac.u )
+        step!(solver_diff,dt,true)
+        set_u!( solver_reac, solver_diff.u )
+        step!(solver_reac,dt*0.5,true)
+        savevalues!(solver_reac, true)
+        t=t+dt
+        push!(soltime, t)
+        push!(solhist, copy(solver_reac.u))
+    end
+    return (soltime, solhist)
+end
 
 # Define mesh
 nvar = 3
@@ -140,6 +179,12 @@ bz_3eq_init_sol!(u,p,xmin,ymin)
 tspan = (0.0,1.)
 prob = ODEProblem(ODEbz!,u,tspan,p)
 
-# Solve
+# Solve the problem in a monolithic manner
 sol=solve(prob,ROCK4(), progress = true, progress_steps = 10)
+# export the solution (only works with monolithic right now :\)
+export_sol_2dcart("save_test_singlestep.txt", sol, (ncol,nlin,dx,dy,xmin,ymin,xmax,ymax))
+
+# Or solve the problem in a splitted manner
+# soltime, solhist = solve_strang(u,tspan, 0.01 ,p, ROCK4(), ROCK4())
+
 

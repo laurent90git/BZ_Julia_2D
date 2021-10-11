@@ -10,13 +10,10 @@ This script is heavily inspired by the work of ???? and others at CMAP, Ecole Po
 
 ## Usage
 
-Run the following commands
+Run the following commands:
 
 ```bash
 cd("your directory")
-# Load the model and runs the simulation
+# Load the model, run the simulation, export the solution
 include("test.jl")
-# Export the solution
-include("cusIO".jl")
-export_sol_2dcart("save_test_singlestep.txt", sol, (ncol,nlin,dx,dy,xmin,ymin,xmax,ymax))
 ```
