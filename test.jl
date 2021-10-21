@@ -41,6 +41,49 @@ function ODEheat!(du,u,p,t)
         @. dT = lap
 end
 
+function ODEbz_diff!(du,u,p,t)
+        nvar , nlin , ncol, dx, dy, Da, Db, Dc, q, f, eps, mu, lapa, lapb, lapc = p
+        
+        dv = reshape(du,nvar,ncol,nlin)
+        v = reshape(u, nvar, ncol, nlin)
+        
+        a = view(v,1,:,:)
+        da = view(dv,1,:,:)
+        b = view(v,2,:,:)
+        db = view(dv,2,:,:)
+        c = view(v,3,:,:)
+        dc = view(dv,3,:,:)
+        
+        laplacian!(a, lapa, ncol, nlin,dx,dy)
+        laplacian!(b, lapb, ncol, nlin,dx,dy)
+        laplacian!(c, lapc, ncol, nlin,dx,dy)
+    
+        @. da = Da*lapa 
+        @. db = Db*lapb 
+        @. dc = Dc*lapc  
+end
+
+
+function ODEbz_reac!(du,u,p,t)
+        nvar , nlin , ncol, dx, dy, Da, Db, Dc, q, f, eps, mu, lapa, lapb, lapc = p
+        
+        dv = reshape(du,nvar,ncol,nlin)
+        v = reshape(u, nvar, ncol, nlin)
+        
+        a = view(v,1,:,:)
+        da = view(dv,1,:,:)
+        b = view(v,2,:,:)
+        db = view(dv,2,:,:)
+        c = view(v,3,:,:)
+        dc = view(dv,3,:,:)
+        
+        @. da = 1/mu * (-q*a - a*b + f*c)
+        @. db = 1/eps * (q*a - a*b + b*(1-b))
+        @. dc = b - c 
+end
+
+
+
 function ODEbz!(du,u,p,t)
 		# complete BZ system (3 variables) in 2D
         nvar , nlin , ncol, dx, dy, Da, Db, Dc, q, f, eps, mu, lapa, lapb, lapc = p
